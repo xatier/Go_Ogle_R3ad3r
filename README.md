@@ -8,6 +8,21 @@ Usage
 ------
 # still under working
 
+try to run `./fetch.pl` first and test `./rss.py`
+
+make sure that you've installed these two cpan modules
+
+[XML::Feed](https://metacpan.org/module/XML::Feed)
+
+[WWW::Shorten::TinyURL](https://metacpan.org/module/WWW::Shorten::TinyURL)
+
+u can install then with [cpanm](https://metacpan.org/module/App::cpanminus) :)
+
+and
+
+[wxpython](http://wxpython.org/) Python GUI library
+
+
 
 License
 ----------

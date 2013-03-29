@@ -4,18 +4,16 @@
 RIP Google Reader Q______Q
 """
 
-import wx, wx.html
+import wx, wx.html, wx.lib.scrolledpanel
 import os
 import sys
 import urllib2
 
-
-
 class HtmlWindow(wx.html.HtmlWindow):
     """
-    the html show window
+    html rendering window
     """
-    def __init__(self, parent, id, size=(600,400)):
+    def __init__(self, parent, id, size=(600,800)):
         wx.html.HtmlWindow.__init__(self,parent, id, size=size)
         if "gtk2" in wx.PlatformInfo:
             self.SetStandardFonts()
@@ -24,59 +22,68 @@ class HtmlWindow(wx.html.HtmlWindow):
         """goto link"""
         wx.LaunchDefaultBrowser(link.GetHref())
 
+class DisplayPanel(wx.Panel):
+    """
+    the panel where Feed body display
+    """
+    def __init__(self, parent, content):
+        wx.Panel.__init__(self, parent, style=wx.RAISED_BORDER)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        self.hwin = HtmlWindow(self, -1)
+        if not content:
+            content = "<h1>None</h1>"
+        self.hwin.SetPage(content)
+        sizer.Add(self.hwin, wx.EXPAND)
+        self.SetSizerAndFit(sizer)
 
-class ShowBox(wx.Dialog):
-    def __init__(self, content):
-        wx.Dialog.__init__(self, None, -1, "Show feed",
-            style=wx.DEFAULT_DIALOG_STYLE | wx.THICK_FRAME | wx.RESIZE_BORDER |
-                wx.TAB_TRAVERSAL)
-        hwin = HtmlWindow(self, -1, size=(600,1800))
-
-        hwin.SetPage(content)
-        btn = hwin.FindWindowById(wx.ID_OK)
-        self.CentreOnParent(wx.BOTH)
-        self.SetFocus()
+    def updateContent(self, content):
+        self.hwin.SetPage(content)
 
 
-class Feed():
+class Subscription():
     def __init__(self, name):
         self.entry = []
         os.chdir(name)
         f = open('list')
         for line in f:
             title = line
-            link = f.next()
+            link = f.next().rstrip('\n')
             self.entry.append([title, link])
         f.close()
         os.chdir('../')
 
-class feedBotton(wx.Button):
+
+
+class FeedBotton(wx.Button):
     def __init__(self, parent, label="", url=""):
         wx.Button.__init__(self, parent, label=label)
         self.url = url
 
 
-class feedPanel(wx.Panel):
+class SubscriptionPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, style=wx.RAISED_BORDER)
 
-        Sizer = wx.BoxSizer(wx.VERTICAL)
-        iner_sizer = [] * len(parent.subscription)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        iner_sizer = [] * len(parent.subscriptions)
         self.btn_list = []
 
-        for sub in parent.subscription:
-            Sizer.Add(wx.StaticText(self, label=("["+sub+"]")))
+        for sub in parent.subscriptions:
+            sizer.Add(wx.StaticText(self, label=("["+sub+"]")))
             iner_sizer.append(wx.BoxSizer(wx.VERTICAL))
-            for e in Feed(sub).entry:
+            for e in Subscription(sub).entry:
                 feed_sizer = wx.BoxSizer(wx.HORIZONTAL)
-                self.btn_list.append(feedBotton(self, label="Read Me", url=e[1]))
+                self.btn_list.append(FeedBotton(self, label="Read Me", url=e[1]))
                 feed_sizer.Add(self.btn_list[-1])
                 feed_sizer.Add(wx.StaticText(self, label=("    "+e[0])))
                 iner_sizer[-1].Add(feed_sizer)
 
-            Sizer.Add(iner_sizer[-1])
+            sizer.Add(iner_sizer[-1])
 
-        self.SetSizerAndFit(Sizer)
+        # set panel color for debugging
+        #self.SetBackgroundColour(wx.Colour(128,128,128))
+        self.SetSizerAndFit(sizer)
+        self.SetAutoLayout(1) 
 
 
 
@@ -86,13 +93,14 @@ class MainWindow(wx.Frame):
         self.CreateStatusBar()
         self.Maximize()
 
+        #os.system("./fetch.pl")
 
         # read feed data
         self.feedsdir = os.listdir('feeds')
         os.chdir('feeds')
-        self.subscription = []
+        self.subscriptions = []
         for feedname in self.feedsdir:
-            self.subscription.append(feedname)
+            self.subscriptions.append(feedname)
 
         # Setting up the menu
         filemenu= wx.Menu()
@@ -105,33 +113,36 @@ class MainWindow(wx.Frame):
         menuBar.Append(filemenu,"&File")
         self.SetMenuBar(menuBar)
 
-        self.mypanel = feedPanel(self)
+        """
+        XXX: try to add scrolling bar to the left panel Q_Q
+        """
+        # self.sp = wx.lib.scrolledpanel.ScrolledPanel(self, style=wx.ALWAYS_SHOW_SB)
+        # self.sp.SetupScrolling()
+        # tsizer = wx.BoxSizer(wx.VERTICAL)
+        # self.text_panel = SubscriptionPanel(self)
+        # tsizer.Add(self.text_panel)
+        # self.sp.SetSizer(tsizer)
+        # self.sp.SetAutoLayout(1)
 
-        # Buttons
-        self.sizer2 = wx.BoxSizer(wx.HORIZONTAL)
-        self.buttons = []
-        self.buttons.append(wx.Button(self, -1, "bottom"))
-        self.sizer2.Add(self.buttons[0], 1, wx.EXPAND)
+        self.text_panel = SubscriptionPanel(self)
 
+        self.display_panel = DisplayPanel(self, None)
 
         # Set events.
         self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
         self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
-        self.Bind(wx.EVT_BUTTON, self.OnUpdate, self.buttons[0])
         self.Bind(wx.EVT_CLOSE, self.OnExit)
 
-        for btn in self.mypanel.btn_list:
+        for btn in self.text_panel.btn_list:
             self.Bind(wx.EVT_BUTTON, self.OnShow, btn)
 
-        # add sizer2 to sizer
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.sizer.Add(self.sizer2, 0, wx.EXPAND)
-        self.sizer.Add(self.mypanel)
+        # add two panels in to sizer
+        self.sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.sizer.Add(self.text_panel)
+        self.sizer.Add(self.display_panel)
 
         # Layout the sizer
-        self.SetSizer(self.sizer)
-        self.SetAutoLayout(1)
-
+        self.SetSizerAndFit(self.sizer)
         self.Show(True)
 
         # i don't want to see the anonyed error message dialog :(
@@ -152,21 +163,13 @@ class MainWindow(wx.Frame):
         dlg.Destroy()
         self.Destroy()
 
-    def OnUpdate(self, e):
-        c = urllib2.urlopen("http://tinyurl.com/cag6auj").read()
-        dlg = ShowBox(c)
-        dlg.ShowModal()
-        dlg.Destroy()
-
     def OnShow(self, e):
         btn = e.GetEventObject()
-        print (btn.url)
+        print ("downloading... " + btn.url)
         c = urllib2.urlopen(btn.url).read()
+        print ("rendering...")
+        self.display_panel.updateContent(c)
         print ("done.")
-        print c
-        dlg = ShowBox(c)
-        dlg.ShowModal()
-        dlg.Destroy()
 
 
 app = wx.App(False)

@@ -1,4 +1,4 @@
-#!/usr/bin/perl -CDS
+#!/usr/bin/env perl -CDS
 
 use 5.014;
 

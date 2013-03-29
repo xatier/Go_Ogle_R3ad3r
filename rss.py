@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python
 
 """
 RIP Google Reader Q______Q
@@ -30,13 +30,10 @@ class ShowBox(wx.Dialog):
         wx.Dialog.__init__(self, None, -1, "Show feed",
             style=wx.DEFAULT_DIALOG_STYLE | wx.THICK_FRAME | wx.RESIZE_BORDER |
                 wx.TAB_TRAVERSAL)
-        hwin = HtmlWindow(self, -1, size=(400,200))
+        hwin = HtmlWindow(self, -1, size=(600,1800))
 
         hwin.SetPage(content)
         btn = hwin.FindWindowById(wx.ID_OK)
-        irep = hwin.GetInternalRepresentation()
-        hwin.SetSize((irep.GetWidth()+25, irep.GetHeight()+10))
-        self.SetClientSize(hwin.GetSize())
         self.CentreOnParent(wx.BOTH)
         self.SetFocus()
 
@@ -53,44 +50,49 @@ class Feed():
         f.close()
         os.chdir('../')
 
+class feedBotton(wx.Button):
+    def __init__(self, parent, label="", url=""):
+        wx.Button.__init__(self, parent, label=label)
+        self.url = url
 
-class TextPanel(wx.Panel):
+
+class feedPanel(wx.Panel):
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent)
+        wx.Panel.__init__(self, parent, style=wx.RAISED_BORDER)
 
         Sizer = wx.BoxSizer(wx.VERTICAL)
-        grid = wx.GridBagSizer(hgap=5, vgap=3)
+        iner_sizer = [] * len(parent.subscription)
+        self.btn_list = []
 
-        self.titles = []
-        self.links = []
-        cnt = 0
-        for feed in parent.feeds:
-            for e in feed.entry:
-                self.titles.append(wx.StaticText(self, label=e[0]))
-                self.links.append(wx.TextCtrl(self, style=wx.TE_MULTILINE))
-                self.links[-1].SetValue(e[1])
-                grid.Add(self.titles[-1], pos=(cnt, 0))
-                grid.Add(self.links[-1], pos=(cnt, 1))
-                cnt += 1
+        for sub in parent.subscription:
+            Sizer.Add(wx.StaticText(self, label=("["+sub+"]")))
+            iner_sizer.append(wx.BoxSizer(wx.VERTICAL))
+            for e in Feed(sub).entry:
+                feed_sizer = wx.BoxSizer(wx.HORIZONTAL)
+                self.btn_list.append(feedBotton(self, label="Read Me", url=e[1]))
+                feed_sizer.Add(self.btn_list[-1])
+                feed_sizer.Add(wx.StaticText(self, label=("    "+e[0])))
+                iner_sizer[-1].Add(feed_sizer)
 
-        Sizer.Add(grid, wx.EXPAND)
+            Sizer.Add(iner_sizer[-1])
+
         self.SetSizerAndFit(Sizer)
 
 
 
 class MainWindow(wx.Frame):
     def __init__(self, parent, title):
-        wx.Frame.__init__(self, parent, title=title, size=wx.Size(500,500))
+        wx.Frame.__init__(self, parent, title=title)
         self.CreateStatusBar()
-        self.Centre()
+        self.Maximize()
 
 
         # read feed data
         self.feedsdir = os.listdir('feeds')
         os.chdir('feeds')
-        self.feeds = []
+        self.subscription = []
         for feedname in self.feedsdir:
-            self.feeds.append(Feed(feedname))
+            self.subscription.append(feedname)
 
         # Setting up the menu
         filemenu= wx.Menu()
@@ -103,7 +105,7 @@ class MainWindow(wx.Frame):
         menuBar.Append(filemenu,"&File")
         self.SetMenuBar(menuBar)
 
-        self.mypanel = TextPanel(self)
+        self.mypanel = feedPanel(self)
 
         # Buttons
         self.sizer2 = wx.BoxSizer(wx.HORIZONTAL)
@@ -118,10 +120,13 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.OnUpdate, self.buttons[0])
         self.Bind(wx.EVT_CLOSE, self.OnExit)
 
+        for btn in self.mypanel.btn_list:
+            self.Bind(wx.EVT_BUTTON, self.OnShow, btn)
+
         # add sizer2 to sizer
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(self.sizer2, 0, wx.EXPAND)
-        self.sizer.Add(self.mypanel, 1, wx.EXPAND)
+        self.sizer.Add(self.mypanel)
 
         # Layout the sizer
         self.SetSizer(self.sizer)
@@ -153,11 +158,19 @@ class MainWindow(wx.Frame):
         dlg.ShowModal()
         dlg.Destroy()
 
-
+    def OnShow(self, e):
+        btn = e.GetEventObject()
+        print (btn.url)
+        c = urllib2.urlopen(btn.url).read()
+        print ("done.")
+        print c
+        dlg = ShowBox(c)
+        dlg.ShowModal()
+        dlg.Destroy()
 
 
 app = wx.App(False)
-frame = MainWindow(None, "RSS")
+frame = MainWindow(None, "xatier's RSS feed reader")
 app.MainLoop()
 
 

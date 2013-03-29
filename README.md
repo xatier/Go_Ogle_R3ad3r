@@ -10,17 +10,21 @@ Usage
 
 try to run `./fetch.pl` first and test `./rss.py`
 
-make sure that you've installed these two cpan modules
+make sure that you've installed these cpan modules
 
 [XML::Feed](https://metacpan.org/module/XML::Feed)
 
 [WWW::Shorten::TinyURL](https://metacpan.org/module/WWW::Shorten::TinyURL)
+
+[LWP::Protocol::https] (https://metacpan.org/module/LWP::Protocol::https)
 
 u can install then with [cpanm](https://metacpan.org/module/App::cpanminus) :)
 
 and
 
 [wxpython](http://wxpython.org/) Python GUI library
+
+For mac users: run the command in `wxpy_fix` to turn on 32bit mode
 
 
 

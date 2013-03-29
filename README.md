@@ -28,7 +28,7 @@ For mac users: run the command in `wxpy_fix` to turn on 32bit mode
 
 Screenshot
 ----------
-![screenshot](/screenshot.png)
+![screenshot](/Screenshot.png)
 
 License
 ----------
